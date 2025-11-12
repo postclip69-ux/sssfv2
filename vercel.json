@@ -1,5 +1,5 @@
 {
   "rewrites": [
-    { "source": "/", "destination": "/public/stok-xda.html" }
+    { "source": "/", "destination": "/stok-xda.html" }
   ]
 }
