@@ -116,20 +116,45 @@
   </main>
 
 
-  <script>
+    <script>
     const gridContainer = document.getElementById("stock-grid-container");
     const lastRefreshEl = document.getElementById("last-refresh");
-    const API_URL = "/api/stok-v2"; // Panggil proxy V2 baru
-    const REFRESH_INTERVAL = 10000; // 10 Detik
+    const API_URL = "/api/stok-v2"; // Panggil proxy V2
+    const REFRESH_INTERVAL = 10000; // 10 Detik (Untuk menghindari Error 429)
+
+    // ==========================================================
+    // DAFTAR MASTER PRODUK (Hardcoded seperti juraganxl.my.id)
+    // ==========================================================
+    const MASTER_PRODUCT_LIST = [
+      { kode: "XDA13", areas: [{ name: "Area1", value: "15GB" }, { name: "Area2", value: "20GB" }, { name: "Area3", value: "20GB" }, { name: "Area4", value: "30GB" }] },
+      { kode: "XDA19", areas: [{ name: "Area1", value: "19GB" }, { name: "Area2", value: "21GB" }, { name: "Area3", value: "26GB" }, { name: "Area4", value: "30GB" }] },
+      { kode: "XDA25", areas: [{ name: "Area1", value: "25GB" }, { name: "Area2", value: "27GB" }, { name: "Area3", "value": "34GB" }, { name: "Area4", value: "42GB" }] },
+      { kode: "XDA27", areas: [{ name: "Area1", value: "26GB" }, { name: "Area2", value: "30GB" }, { name: "Area3", value: "44GB" }, { name: "Area4", value: "50GB" }] },
+      { kode: "XDA31", areas: [{ name: "Area1", value: "31GB" }, { name: "Area2", value: "33GB" }, { name: "Area3", value: "46GB" }, { name: "Area4", value: "48GB" }] },
+      { kode: "XDA34", areas: [{ name: "Area1", value: "33GB" }, { name: "Area2", value: "35GB" }, { name: "Area3", value: "47GB" }, { name: "Area4", value: "71GB" }] },
+      { kode: "XDA38", areas: [{ name: "Area1", value: "38GB" }, { name: "Area2", value: "40GB" }, { name: "Area3", value: "45GB" }, { name: "Area4", value: "55GB" }] },
+      { kode: "XDA47", areas: [{ name: "Area1", value: "47GB" }, { name: "Area2", value: "50GB" }, { name: "Area3", value: "54GB" }, { name: "Area4", value: "64GB" }] },
+      { kode: "XDA55", areas: [{ name: "Area1", value: "54GB" }, { name: "Area2", value: "59GB" }, { name: "Area3", value: "61GB" }, { name: "Area4", value: "71GB" }] },
+      { kode: "XDA63", areas: [{ name: "Area1", value: "63GB" }, { name: "Area2", value: "65GB" }, { name: "Area3", value: "70GB" }, { name: "Area4", value: "80GB" }] },
+      { kode: "XDA64", areas: [{ name: "Area1", value: "65GB" }, { name: "Area2", value: "70GB" }, { name: "Area3", value: "78GB" }, { name: "Area4", value: "123GB" }] },
+      { kode: "XDA76", areas: [{ name: "Area1", value: "76GB" }, { name: "Area2", value: "78GB" }, { name: "Area3", value: "85GB" }, { name: "Area4", value: "93GB" }] },
+      { kode: "XDA88", areas: [{ name: "Area1", value: "88GB" }, { name: "Area2", value: "90GB" }, { name: "Area3", value: "95GB" }, { name: "Area4", value: "103GB" }] },
+      { kode: "XDA105", areas: [{ name: "Area1", value: "105GB" }, { name: "Area2", value: "110GB" }, { name: "Area3", value: "123GB" }, { name: "Area4", value: "163GB" }] },
+      { kode: "CL1", areas: [{ name: "7 GB - 11 GB" }] },
+      { kode: "CL2", areas: [{ name: "12 GB - 16 GB" }] },
+      { kode: "CL3", areas: [{ name: "17 GB - 21 GB" }] },
+      { kode: "CL4", areas: [{ name: "22 GB - 26 GB" }] },
+      { kode: "CL5", areas: [{ name: "27 GB - 31 GB" }] },
+      { kode: "CL6", areas: [{ name: "32 GB - 36 GB" }] }
+    ];
 
     /**
-     * Membuat satu kartu HTML
+     * Membuat satu kartu HTML (Sekarang menerima 'stockValue' terpisah)
      */
-    function createStockCard(product) {
-        // Asumsi 'product' memiliki: kode, stock, dan areas (array)
+    function createStockCard(product, stockValue = 0) {
         const kode = product.kode || "N/A";
-        const stock = product.stock || 0;
-        const areas = product.areas || []; // Ganti 'areas' jika nama propertinya beda
+        const stock = stockValue;
+        const areas = product.areas || [];
 
         let areaListHtml = '';
         
@@ -141,19 +166,20 @@
                 // 1. Jika item adalah string (misal: "7 GB - 11 GB")
                 // 2. Jika item adalah objek (misal: {name: "Area1", value: "15GB"})
                 
-                if (typeof item === 'string') {
-                    areaListHtml += `<li class="full-width"><span>${item}</span></li>`;
+                if (typeof item === 'string' || item.value === undefined) {
+                    areaListHtml += `<li class="full-width"><span>${item.name || item}</span></li>`;
                 } else if (item.name && item.value) {
                     areaListHtml += `<li><span>${item.name}</span><span>${item.value}</span></li>`;
-                } else if (item.name && !item.value) {
-                     areaListHtml += `<li class="full-width"><span>${item.name}</span></li>`;
                 }
             });
         }
 
+        // Tambahkan style 'stock-zero' jika stok 0
+        const stockClass = stock <= 0 ? 'stock-zero' : '';
+
         return `
             <div class="card">
-              <div class="card-header">
+              <div class="card-header ${stockClass}">
                 <span class="kode">${kode}</span>
                 <span class="stock">STOCK: ${stock}</span>
               </div>
@@ -165,41 +191,54 @@
     }
 
     /**
-     * Fungsi fetch utama
+     * Fungsi fetch utama (LOGIKA BARU)
      */
     async function fetchAndRenderStok() {
       if (document.hidden) return;
       
-      let updateTime = new Date().toLocaleTimeString('id-ID', { hour12: false });
-      
+      let apiStockList = [];
+      let updateTime = new Date().toLocaleTimeString('id-ID', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      let fetchError = null;
+
       try {
         const r = await fetch(API_URL + "?ts=" + Date.now(), { cache: "no-store" });
         const j = await r.json();
 
-        // ⚠️ PENTING: Sesuaikan 'j.data' jika nama propertinya beda
-        // Saya berasumsi API V2 mengembalikan { ..., data: [...] }
-        const stockList = j.data || j.list || []; 
-
-        if (!r.ok || j.ok === false || !stockList) {
-          throw new Error(j.error || j.message || "Gagal memuat");
-        }
-
-        if (stockList.length === 0) {
-            gridContainer.innerHTML = '<div style="text-align:center; grid-column: 1 / -1; padding: 40px; color: #888;">Stok Kosong / Tidak Tersedia.</div>';
+        if (!r.ok || j.ok === false) {
+          fetchError = `Error ${r.status}: ${j.error || j.message || 'Gagal'}`;
         } else {
-            // Render semua kartu
-            let allCardsHtml = '';
-            stockList.forEach(product => {
-                allCardsHtml += createStockCard(product);
-            });
-            gridContainer.innerHTML = allCardsHtml;
+          apiStockList = j.data || j.list || [];
         }
-
-        lastRefreshEl.textContent = `Last refresh: ${updateTime}`;
 
       } catch (e) {
-        gridContainer.innerHTML = `<div style="text-align:center; grid-column: 1 / -1; padding: 40px; color: #D32F2F; font-weight: bold;">❌ Gagal memuat data (${e.message}).</div>`;
-        lastRefreshEl.textContent = `Last refresh: Gagal pada ${updateTime}`;
+        fetchError = `Gagal memuat (${e.message || "error"})`;
+      }
+
+      // === LOGIKA RENDER BARU ===
+      // Selalu render MASTER_PRODUCT_LIST, apa pun hasil API-nya.
+      
+      let allCardsHtml = '';
+      
+      MASTER_PRODUCT_LIST.forEach(masterProduct => {
+          // 1. Cari data produk ini di hasil API
+          const apiProduct = apiStockList.find(p => p.kode === masterProduct.kode);
+          
+          // 2. Ambil stok dari API jika ada, jika tidak, anggap 0
+          const currentStock = apiProduct ? (apiProduct.stock || 0) : 0;
+          
+          // 3. Buat kartu dengan data master dan stok dari API
+          allCardsHtml += createStockCard(masterProduct, currentStock);
+      });
+
+      gridContainer.innerHTML = allCardsHtml;
+      
+      // Perbarui waktu, atau tampilkan error jika ada
+      if(fetchError) {
+          lastRefreshEl.textContent = `Last refresh: Gagal pada ${updateTime} (${fetchError})`;
+          lastRefreshEl.style.color = '#D32F2F'; // Merah
+      } else {
+          lastRefreshEl.textContent = `Last refresh: ${updateTime}`;
+          lastRefreshEl.style.color = ''; // Kembali normal
       }
     }
 
