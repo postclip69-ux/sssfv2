@@ -35,7 +35,7 @@ module.exports = async (req, res) => {
     const data = await r.json();
 
     // Atur cache 1 detik
-    res.setHeader("Cache-Control", "s-maxage=1, stale-while-revalidate=5");
+    res.setHeader("Cache-Control", "s-maxage=10, stale-while-revalidate=30");
     return res.status(200).json(data); // Kirim JSON apa adanya
 
   } catch (e) {
